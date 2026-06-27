@@ -21,10 +21,7 @@ async function initDB(db) {
   
   const gameDataCount = await db.collection('game_data').countDocuments();
   if (gameDataCount === 0) {
-    const DEFAULT_TEAMS = [
-      'Team Mavericks', 'Team Titans', 'Team Phoenix', 'Team Spartans',
-      'Team Renegades', 'Team Vanguard', 'Team Inferno', 'Team Nexus'
-    ];
+    const DEFAULT_TEAMS = [];
     const CLUE_COUNT = 7;
     const initialData = { 
       type: 'treasure_hunt_data',
