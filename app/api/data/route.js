@@ -45,12 +45,23 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const [username, password] = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
+
     const client = await clientPromise;
     const db = client.db();
     
     await initDB(db);
 
+    const user = await db.collection('accounts').findOne({ username });
+    if (!user || user.password !== password) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
     // Ensure we are updating the existing document
     await db.collection('game_data').updateOne(
       { type: 'treasure_hunt_data' },

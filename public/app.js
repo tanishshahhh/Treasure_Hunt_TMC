@@ -17,9 +17,18 @@ function getGameData() {
 
 function saveGameData(data) { 
   localGameData = data;
+  const userStr = sessionStorage.getItem('tmc_user');
+  let authHeader = '';
+  if (userStr) {
+    const u = JSON.parse(userStr);
+    authHeader = 'Basic ' + btoa(u.username + ':' + u.password);
+  }
   fetch('/api/data', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': authHeader
+    },
     body: JSON.stringify(data)
   }).catch(err => console.error("Error saving data", err));
 }
@@ -46,6 +55,7 @@ function initLogin() {
       if (data.success) {
         errEl.textContent = '';
         state.user = data.user;
+        state.user.password = p; // Securely keep in session for API calls
         sessionStorage.setItem('tmc_user', JSON.stringify(state.user));
         showDashboard();
       } else {
