@@ -13,7 +13,7 @@ import {
 
 // ─── No hardcoded credentials ───
 // All accounts (username, password, role) are stored ONLY in MongoDB.
-// Use scripts/seed-accounts.js to create accounts in the DB.
+// Manage them directly in MongoDB Compass.
 
 let dbInitialized = false;
 

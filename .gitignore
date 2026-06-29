@@ -21,9 +21,6 @@ build/
 # local credentials
 credentials.json
 
-# scripts with sensitive data (seed passwords etc.)
-scripts/
-
 # misc
 .DS_Store
 *.pem
