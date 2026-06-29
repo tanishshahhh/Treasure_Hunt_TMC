@@ -133,6 +133,12 @@ function showDashboard() {
     el.style.display = role === 'admin' ? '' : 'none';
   });
 
+  // User role: scoreboard only — hide progress nav
+  const progressNav = document.getElementById('nav-progress');
+  if (progressNav) {
+    progressNav.style.display = (role === 'user') ? 'none' : '';
+  }
+
   setupSidebar();
   switchView('scoreboard');
   renderAll();
@@ -195,21 +201,6 @@ function setupVolDash() {
   });
   // Logout
   document.getElementById('vol-logout-btn').addEventListener('click', logout);
-
-  // Reset
-  document.getElementById('vol-reset-btn').addEventListener('click', () => {
-    openModal('Reset Scores', `<p>Are you sure you want to reset all team scores for the <strong>${state.session}</strong> session? This cannot be undone.</p>`, () => {
-      const data = getGameData();
-      data.teams.forEach(t => {
-        t[state.session] = new Array(CLUE_COUNT).fill(false);
-      });
-      saveGameData(data);
-      closeModal();
-      renderAll();
-      showToast(`Scores reset for ${state.session} session!`, 'success');
-      broadcastUpdate();
-    });
-  });
 }
 
 function renderVolView() {
@@ -290,7 +281,8 @@ function escapeHtml(str) {
 function renderAll() {
   if (state.user.role === 'volunteer') { renderVolView(); return; }
   renderScoreboard();
-  renderProgress();
+  // User role: scoreboard only — skip progress rendering
+  if (state.user.role !== 'user') renderProgress();
   if (state.user.role === 'admin') renderManage();
 }
 
@@ -519,6 +511,21 @@ function renderManage() {
     showToast(`${name} added!`, 'success');
     broadcastUpdate();
   });
+
+  // Reset scores button (admin only)
+  document.getElementById('btn-reset-scores').onclick = () => {
+    openModal('Reset Scores', `<p>Are you sure you want to reset all team scores for the <strong>${state.session}</strong> session? This cannot be undone.</p>`, () => {
+      const data = getGameData();
+      data.teams.forEach(t => {
+        t[state.session] = new Array(CLUE_COUNT).fill(false);
+      });
+      saveGameData(data);
+      closeModal();
+      renderAll();
+      showToast(`Scores reset for ${state.session} session!`, 'success');
+      broadcastUpdate();
+    });
+  };
 }
 
 window.editTeam = function(id) {

@@ -246,13 +246,22 @@
               </h2>
               <p class="view-subtitle">Add, edit, or remove teams</p>
             </div>
-            <button class="btn-primary" id="btn-add-team">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Add Team
-            </button>
+            <div class="manage-header-actions">
+              <button class="btn-danger-outline" id="btn-reset-scores">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+                Reset Scores
+              </button>
+              <button class="btn-primary" id="btn-add-team">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Team
+              </button>
+            </div>
           </div>
           <div class="manage-container" id="manage-container">
             <!-- Populated by JS -->
@@ -326,21 +335,12 @@
       <div class="vol-bottom-user">
         <div class="vol-role-chip">Volunteer</div>
       </div>
-      <div style="display: flex; gap: 10px;">
-        <button class="vol-logout-btn" id="vol-reset-btn" style="color: #ff6b6b; border-color: rgba(255,107,107,0.3);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-          </svg>
-          Reset
-        </button>
-        <button class="vol-logout-btn" id="vol-logout-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-          </svg>
-          Sign Out
-        </button>
-      </div>
+      <button class="vol-logout-btn" id="vol-logout-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+        </svg>
+        Sign Out
+      </button>
     </div>
   </div>
 
