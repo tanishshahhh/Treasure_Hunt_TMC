@@ -5,7 +5,7 @@ let localGameData = null;
 let state = {
   session: 'morning',
   currentView: 'scoreboard',
-  user: null, // { username, role }
+  user: null, // { username, role } — comes from server, NOT editable client-side
 };
 
 function getGameData() {
@@ -17,18 +17,11 @@ function getGameData() {
 
 function saveGameData(data) { 
   localGameData = data;
-  const userStr = sessionStorage.getItem('tmc_user');
-  let authHeader = '';
-  if (userStr) {
-    const u = JSON.parse(userStr);
-    authHeader = 'Basic ' + btoa(u.username + ':' + u.password);
-  }
+  // Auth is handled by httpOnly cookie — no credentials in JS
   fetch('/api/data', {
     method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': authHeader
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', // sends the httpOnly cookie automatically
     body: JSON.stringify(data)
   }).catch(err => console.error("Error saving data", err));
 }
@@ -44,37 +37,69 @@ function initLogin() {
     const btn = document.getElementById('login-btn');
     const originalText = btn.innerHTML;
     btn.innerHTML = '<span>Signing In...</span>';
+    btn.disabled = true;
     
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ username: u, password: p })
       });
       const data = await res.json();
       if (data.success) {
         errEl.textContent = '';
+        // Role comes from server-signed JWT — cannot be tampered client-side
         state.user = data.user;
-        state.user.password = p; // Securely keep in session for API calls
-        sessionStorage.setItem('tmc_user', JSON.stringify(state.user));
         showDashboard();
       } else {
         errEl.textContent = data.error || 'Invalid credentials';
+        // Show retry timer if rate-limited
+        if (res.status === 429 && data.retryAfter) {
+          let remaining = data.retryAfter;
+          const interval = setInterval(() => {
+            remaining--;
+            if (remaining <= 0) {
+              clearInterval(interval);
+              errEl.textContent = '';
+              btn.disabled = false;
+              return;
+            }
+            errEl.textContent = `Too many attempts. Try again in ${remaining}s`;
+          }, 1000);
+        }
       }
     } catch (err) {
       errEl.textContent = 'Server error. Please try again.';
     }
     btn.innerHTML = originalText;
+    if (!btn.disabled) btn.disabled = false;
+    // Re-enable if not rate-limited
+    setTimeout(() => { btn.disabled = false; }, 500);
   });
 }
 
-function checkSession() {
-  const saved = sessionStorage.getItem('tmc_user');
-  if (saved) { state.user = JSON.parse(saved); showDashboard(); }
+async function checkSession() {
+  // Check if httpOnly cookie holds a valid session
+  try {
+    const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        state.user = data.user;
+        showDashboard();
+      }
+    }
+  } catch (err) {
+    // No valid session — stay on login screen
+  }
 }
 
-function logout() {
-  sessionStorage.removeItem('tmc_user');
+async function logout() {
+  // Clear the httpOnly cookie via server
+  try {
+    await fetch('/api/auth', { method: 'DELETE', credentials: 'same-origin' });
+  } catch (err) {}
   state.user = null;
   document.getElementById('dashboard').classList.add('hidden');
   document.getElementById('vol-dashboard').classList.add('hidden');
@@ -216,7 +241,7 @@ function renderVolView() {
       return `
         <div class="vol-team-card" data-tid="${t.id}" style="animation-delay:${idx*.06}s">
           <div class="vol-team-header">
-            <div class="vol-team-name">${t.name}</div>
+            <div class="vol-team-name">${escapeHtml(t.name)}</div>
             <div class="vol-team-score">
               <span class="vol-score-num" data-vscore>${t.score}</span>
               <span class="vol-score-total">/${CLUE_COUNT}</span>
@@ -252,6 +277,13 @@ function renderVolView() {
       container.appendChild(card);
     });
   }
+}
+
+/* ══════════ XSS Protection ══════════ */
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 /* ══════════ RENDER ALL ══════════ */
@@ -292,7 +324,7 @@ function renderScoreboard() {
         <div class="score-row animate-in ${rankClass}" data-tid="${t.id}" style="animation-delay:${i*.05}s">
           <div class="rank-num">${rank}</div>
           <div class="team-info">
-            <div class="team-name">${t.name}</div>
+            <div class="team-name">${escapeHtml(t.name)}</div>
             <div class="sb-track">
               <div class="sb-line-bg"></div>
               <div class="sb-line-fill" style="width:calc(${fillPct}% * ((100% - 40px)/100%) + ${fillPct > 0 ? 20 : 0}px)"></div>
@@ -372,7 +404,7 @@ function renderProgress() {
       return `
         <div class="progress-card animate-in" data-tid="${t.id}" style="animation-delay:${idx*.06}s">
           <div class="progress-card-header">
-            <div class="progress-team-name">${t.name}</div>
+            <div class="progress-team-name">${escapeHtml(t.name)}</div>
             <div class="progress-score-chip" data-chip>${t.score}/${CLUE_COUNT}</div>
           </div>
           <div class="progress-track">
@@ -454,7 +486,7 @@ function renderManage() {
     const aDone = t.afternoon.filter(Boolean).length;
     return `
       <div class="manage-row" style="animation-delay:${data.teams.indexOf(t) * .04}s">
-        <div class="manage-team-name">${t.name}</div>
+        <div class="manage-team-name">${escapeHtml(t.name)}</div>
         <div class="manage-clue-count">AM: ${mDone}/${CLUE_COUNT} · PM: ${aDone}/${CLUE_COUNT}</div>
         <div class="manage-actions">
           <button class="btn-icon" onclick="editTeam(${t.id})" title="Edit">
@@ -494,7 +526,7 @@ window.editTeam = function(id) {
   const team = data.teams.find(t => t.id === id);
   if (!team) return;
   openModal('Edit Team', `
-    <div class="input-group"><label>Team Name</label><input type="text" id="modal-team-name" value="${team.name}"></div>
+    <div class="input-group"><label>Team Name</label><input type="text" id="modal-team-name" value="${escapeHtml(team.name)}"></div>
   `, () => {
     const name = document.getElementById('modal-team-name').value.trim();
     if (!name) return;
@@ -513,7 +545,7 @@ window.deleteTeam = function(id) {
   const data = getGameData();
   const team = data.teams.find(t => t.id === id);
   if (!team) return;
-  openModal('Delete Team', `<p>Are you sure you want to remove <strong>${team.name}</strong>?</p>`, () => {
+  openModal('Delete Team', `<p>Are you sure you want to remove <strong>${escapeHtml(team.name)}</strong>?</p>`, () => {
     const d = getGameData();
     d.teams = d.teams.filter(t => t.id !== id);
     saveGameData(d);
@@ -563,9 +595,11 @@ function broadcastUpdate() {
 
 async function fetchInitialData() {
   try {
-    const res = await fetch('/api/data');
-    localGameData = await res.json();
-    if (state.user) renderAll();
+    const res = await fetch('/api/data', { credentials: 'same-origin' });
+    if (res.ok) {
+      localGameData = await res.json();
+      if (state.user) renderAll();
+    }
   } catch (err) {
     console.error("Failed to load initial data", err);
   }
@@ -574,11 +608,13 @@ async function fetchInitialData() {
 async function onExternalUpdate() {
   if (!state.user || _isBroadcasting) return;
   try {
-    const res = await fetch('/api/data');
-    const newData = await res.json();
-    if (JSON.stringify(newData) !== JSON.stringify(localGameData)) {
-      localGameData = newData;
-      renderAll();
+    const res = await fetch('/api/data', { credentials: 'same-origin' });
+    if (res.ok) {
+      const newData = await res.json();
+      if (JSON.stringify(newData) !== JSON.stringify(localGameData)) {
+        localGameData = newData;
+        renderAll();
+      }
     }
   } catch (err) {}
 }
@@ -589,8 +625,11 @@ if (bc) bc.onmessage = onExternalUpdate;
 setInterval(onExternalUpdate, 5000);
 
 /* ══════════ INIT ══════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  fetchInitialData();
+document.addEventListener('DOMContentLoaded', async () => {
   initLogin();
-  checkSession();
+  // Check session first (from httpOnly cookie), then fetch data
+  await checkSession();
+  if (state.user) {
+    await fetchInitialData();
+  }
 });
