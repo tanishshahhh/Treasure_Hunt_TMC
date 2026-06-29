@@ -11,49 +11,16 @@ import {
   resetAttempts,
 } from '@/lib/auth';
 
-// ─── Default Accounts ───
-// Passwords are stored as bcrypt hashes in the DB.
-// On first run, these plaintext passwords are hashed and inserted.
-// You can change them later via the DB directly.
-const DEFAULT_ACCOUNTS = [
-  {
-    role: 'admin',
-    username: 'admin',
-    plaintextPassword: 'TMC@admin2026',
-    permissions: 'Full access: view all, edit scores, manage teams, both sessions',
-  },
-  {
-    role: 'volunteer',
-    username: 'volunteer',
-    plaintextPassword: 'TMC@vol2026',
-    permissions: 'Can mark/unmark clue progress only. Cannot edit team names.',
-  },
-  {
-    role: 'user',
-    username: 'user',
-    plaintextPassword: 'TMC@user2026',
-    permissions: 'View-only: scoreboard and progress bar. No editing.',
-  },
-];
+// ─── No hardcoded credentials ───
+// All accounts (username, password, role) are stored ONLY in MongoDB.
+// Use scripts/seed-accounts.js to create accounts in the DB.
 
 let dbInitialized = false;
 
 async function initDB(db) {
   if (dbInitialized) return;
-  const accountsCount = await db.collection('accounts').countDocuments();
-  if (accountsCount === 0) {
-    // Hash all passwords before storing → fixes vuln #5 (no plaintext passwords)
-    const hashedAccounts = await Promise.all(
-      DEFAULT_ACCOUNTS.map(async (acc) => ({
-        role: acc.role,
-        username: acc.username,
-        password: await hashPassword(acc.plaintextPassword),
-        permissions: acc.permissions,
-      }))
-    );
-    await db.collection('accounts').insertMany(hashedAccounts);
-  }
 
+  // Only initialize game data if empty — accounts are managed separately via DB
   const gameDataCount = await db.collection('game_data').countDocuments();
   if (gameDataCount === 0) {
     const DEFAULT_TEAMS = [];
