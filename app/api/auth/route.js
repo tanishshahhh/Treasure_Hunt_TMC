@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import {
-  hashPassword,
-  verifyPassword,
   signToken,
   makeSetCookieHeader,
   makeClearCookieHeader,
@@ -77,10 +75,7 @@ export async function POST(request) {
 
     const user = await db.collection('accounts').findOne({ username });
 
-    // Constant-time comparison via bcrypt → prevents timing attacks
-    const valid = user ? await verifyPassword(password, user.password) : false;
-
-    if (!user || !valid) {
+    if (!user || user.password !== password) {
       recordFailedAttempt(ip);
       // Generic error — don't reveal if username exists
       return NextResponse.json(
