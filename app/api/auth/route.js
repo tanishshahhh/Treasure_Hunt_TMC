@@ -1,7 +1,26 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
-import fs from 'fs';
-import path from 'path';
+
+const DEFAULT_ACCOUNTS = [
+  {
+    role: 'admin',
+    username: 'admin',
+    password: 'TMC@admin2026',
+    permissions: 'Full access: view all, edit scores, manage teams, both sessions',
+  },
+  {
+    role: 'volunteer',
+    username: 'volunteer',
+    password: 'TMC@vol2026',
+    permissions: 'Can mark/unmark clue progress only. Cannot edit team names.',
+  },
+  {
+    role: 'user',
+    username: 'user',
+    password: 'TMC@user2026',
+    permissions: 'View-only: scoreboard and progress bar. No editing.',
+  },
+];
 
 let dbInitialized = false;
 
@@ -9,14 +28,7 @@ async function initDB(db) {
   if (dbInitialized) return;
   const accountsCount = await db.collection('accounts').countDocuments();
   if (accountsCount === 0) {
-    const credsPath = path.join(process.cwd(), 'credentials.json');
-    if (fs.existsSync(credsPath)) {
-      const raw = fs.readFileSync(credsPath, 'utf8');
-      const data = JSON.parse(raw);
-      if (data.accounts && data.accounts.length > 0) {
-        await db.collection('accounts').insertMany(data.accounts);
-      }
-    }
+    await db.collection('accounts').insertMany(DEFAULT_ACCOUNTS);
   }
   
   const gameDataCount = await db.collection('game_data').countDocuments();
